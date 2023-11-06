@@ -1,0 +1,14 @@
+node_modules
+
+allTrades.json
+exitedTrades.json
+holdings.json
+lifetime-profits-breakdown.json
+lifetime-total-profit.txt
+yearly-profits-breakdown.json
+yearly-symbol-profits-breakdown.json
+
+2020-2021.csv
+2021-2022.csv
+2022-2023.csv
+2023-2024.csv
