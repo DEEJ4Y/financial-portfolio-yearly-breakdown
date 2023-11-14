@@ -7,6 +7,7 @@ const exitedTrades = {};
 const totalGains = {};
 const yearlySymbolProfitBreakdown = {};
 const yearlyProfitBreakdown = {};
+const totalInvestedAmountsAtEndOfYears = require("./data/totalInvestedAmountAtEndOfYears.json");
 
 async function parseCSVfiles() {
   const files = await fs.readdir("./data/");
@@ -270,6 +271,11 @@ function getYearlyProfitBreakdown() {
         (sum, days) => sum + days,
         0
       ) / yearlyProfitBreakdown[year].tradeTimes.length;
+    yearlyProfitBreakdown[year].totalInvestedThatYear =
+      totalInvestedAmountsAtEndOfYears[year];
+    yearlyProfitBreakdown[year].gainOnInvestment =
+      (yearlyProfitBreakdown[year].gain * 100) /
+      yearlyProfitBreakdown[year].totalInvestedThatYear;
     delete yearlyProfitBreakdown[year].tradeTimes;
   });
 
