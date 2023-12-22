@@ -10,6 +10,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "json-2-csv": "^5.0.1"
+    "json-2-csv": "^5.0.1",
+    "node-irr": "^2.0.5",
+    "xirr": "^1.1.0"
   }
 }

@@ -1,5 +1,6 @@
-const fs = require("fs/promises");
-const { csv2json } = require("json-2-csv");
+const fs = require('fs/promises');
+const { csv2json } = require('json-2-csv');
+const xirr = require('xirr');
 
 const allTrades = [];
 const holdings = {};
@@ -7,14 +8,14 @@ const exitedTrades = {};
 const totalGains = {};
 const yearlySymbolProfitBreakdown = {};
 const yearlyProfitBreakdown = {};
-const totalInvestedAmountsAtEndOfYears = require("./data/totalInvestedAmountAtEndOfYears.json");
+const totalInvestedAmountsAtEndOfYears = require('./data/totalInvestedAmountAtEndOfYears.json');
 
 async function parseCSVfiles() {
-  const files = await fs.readdir("./data/");
+  const files = await fs.readdir('./data/');
 
   const filesData = await Promise.all(
     files
-      ?.filter((filename) => filename.endsWith("csv"))
+      ?.filter((filename) => filename.endsWith('csv'))
       ?.map((filename) => fs.readFile(`./data/${filename}`))
   );
 
@@ -25,13 +26,13 @@ async function parseCSVfiles() {
   });
 
   await fs.writeFile(
-    "./data/allTrades.json",
+    './data/allTrades.json',
     JSON.stringify(allTrades, null, 4),
-    "utf-8"
+    'utf-8'
   );
 }
 
-function getExitedTrades() {
+async function getExitedTrades() {
   allTrades.forEach(
     ({
       symbol,
@@ -48,7 +49,8 @@ function getExitedTrades() {
       order_id,
       order_execution_time,
     }) => {
-      if (trade_type === "buy") {
+      order_execution_time = order_execution_time.split('\n').join('');
+      if (trade_type === 'buy') {
         if (holdings[symbol]) {
           const oldHoldingData = holdings[symbol];
 
@@ -86,7 +88,7 @@ function getExitedTrades() {
             trades: thisSymbolTrades,
           };
         }
-      } else if (trade_type === "sell") {
+      } else if (trade_type === 'sell') {
         if (holdings[symbol]) {
           const oldHoldingData = holdings[symbol];
 
@@ -127,20 +129,20 @@ function getExitedTrades() {
     }
   );
 
-  fs.writeFile(
-    "./data/holdings.json",
+  await fs.writeFile(
+    './data/holdings.json',
     JSON.stringify(holdings, null, 4),
-    "utf-8"
+    'utf-8'
   );
 
-  fs.writeFile(
-    "./data/exitedTrades.json",
+  await fs.writeFile(
+    './data/exitedTrades.json',
     JSON.stringify(exitedTrades, null, 4),
-    "utf-8"
+    'utf-8'
   );
 }
 
-function getSymbolProfitBreakdown() {
+async function getSymbolProfitBreakdown() {
   let totalGain = 0;
   Object.keys(exitedTrades).forEach((symbol) => {
     const symbolGain = exitedTrades[symbol].reduce(
@@ -151,20 +153,20 @@ function getSymbolProfitBreakdown() {
     totalGain += symbolGain;
   });
 
-  fs.writeFile(
-    "./data/lifetime-profits-breakdown.json",
+  await fs.writeFile(
+    './data/lifetime-profits-breakdown.json',
     JSON.stringify(totalGains, null, 4),
-    "utf-8"
+    'utf-8'
   );
 
-  fs.writeFile(
-    "./data/lifetime-total-profit.txt",
+  await fs.writeFile(
+    './data/lifetime-total-profit.txt',
     `Total Gains: ${totalGain.toFixed(2)}\n`,
-    "utf-8"
+    'utf-8'
   );
 }
 
-function getYearlySymbolProfitBreakdown() {
+async function getYearlySymbolProfitBreakdown() {
   Object.keys(exitedTrades).forEach((symbol) => {
     const breakdown = {};
 
@@ -223,14 +225,14 @@ function getYearlySymbolProfitBreakdown() {
     yearlySymbolProfitBreakdown[symbol] = breakdown;
   });
 
-  fs.writeFile(
-    "./data/yearly-symbol-profits-breakdown.json",
+  await fs.writeFile(
+    './data/yearly-symbol-profits-breakdown.json',
     JSON.stringify(yearlySymbolProfitBreakdown, null, 4),
-    "utf-8"
+    'utf-8'
   );
 }
 
-function getYearlyProfitBreakdown() {
+async function getYearlyProfitBreakdown() {
   Object.keys(yearlySymbolProfitBreakdown).forEach((symbol) => {
     Object.keys(yearlySymbolProfitBreakdown[symbol]).forEach((year) => {
       if (yearlyProfitBreakdown[year]) {
@@ -279,25 +281,74 @@ function getYearlyProfitBreakdown() {
     delete yearlyProfitBreakdown[year].tradeTimes;
   });
 
-  fs.writeFile(
-    "./data/yearly-profits-breakdown.json",
+  await fs.writeFile(
+    './data/yearly-profits-breakdown.json',
     JSON.stringify(yearlyProfitBreakdown, null, 4),
-    "utf-8"
+    'utf-8'
   );
 
-  console.table(yearlyProfitBreakdown);
+  // console.table(yearlyProfitBreakdown);
+}
+
+async function getXIRR() {
+  const allExitedTrades = [];
+  Object.values(exitedTrades).forEach((exitedTradeArray) => {
+    allExitedTrades.push(...exitedTradeArray);
+  });
+  // Extract relevant data for XIRR calculation
+  let cashFlows = [];
+  allExitedTrades.forEach(
+    ({ buy, sell, buy_order_execution_time, sell_order_execution_time }) => {
+      cashFlows.push({
+        when: new Date(buy_order_execution_time),
+        amount: -1 * buy,
+      });
+      cashFlows.push({
+        when: new Date(sell_order_execution_time),
+        amount: sell,
+      });
+    }
+  );
+
+  cashFlows.sort((a, b) => (a.when.getTime() <= b.when.getTime() ? -1 : 1));
+
+  // console.log(cashFlows);
+
+  await fs.writeFile(
+    './data/cashflows-breakdown.json',
+    JSON.stringify(cashFlows, null, 4),
+    'utf-8'
+  );
+
+  const trades = [
+    {
+      when: new Date('2023-12-15T18:30:00.000Z'),
+      amount: -100,
+    },
+    {
+      when: new Date('2023-12-20T18:30:00.000Z'),
+      amount: 110,
+    },
+  ];
+
+  // Calculate XIRR
+  const xirrValue = xirr(cashFlows);
+
+  console.log(`XIRR on exited trades: ${(100 * xirrValue).toFixed(2)}%`);
 }
 
 async function main() {
   await parseCSVfiles();
 
-  getExitedTrades();
+  await getExitedTrades();
 
-  getSymbolProfitBreakdown();
+  await getSymbolProfitBreakdown();
 
-  getYearlySymbolProfitBreakdown();
+  await getYearlySymbolProfitBreakdown();
 
-  getYearlyProfitBreakdown();
+  await getYearlyProfitBreakdown();
+
+  getXIRR();
 }
 
 main();
