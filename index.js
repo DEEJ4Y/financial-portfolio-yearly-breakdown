@@ -1,3 +1,6 @@
+const tradingStartDateString = '1 Apr, 2023'; // Replace with your trading start date in the same format. If no date as such, set as null or undefined like below
+//const tradingStartDateString = null;
+
 const fs = require('fs/promises');
 const { csv2json } = require('json-2-csv');
 const xirr = require('xirr');
@@ -9,6 +12,9 @@ const totalGains = {};
 const yearlySymbolProfitBreakdown = {};
 const yearlyProfitBreakdown = {};
 const totalInvestedAmountsAtEndOfYears = require('./data/totalInvestedAmountAtEndOfYears.json');
+const tradingStartDate = tradingStartDateString
+  ? new Date(tradingStartDateString)
+  : null;
 
 async function parseCSVfiles() {
   const files = await fs.readdir('./data/');
@@ -22,7 +28,52 @@ async function parseCSVfiles() {
   const jsonData = filesData.map((buffer) => csv2json(buffer.toString()));
 
   jsonData.forEach((jsonArray) => {
-    allTrades.push(...jsonArray);
+    if (jsonArray.length > 0) {
+      // Zerodha
+      if (jsonArray[0].symbol) {
+        allTrades.push(...jsonArray);
+      }
+      // Groww
+      else {
+        jsonArray.forEach((growwRow) => {
+          let buyTrade = {
+            trade_type: 'buy',
+          };
+          let sellTrade = {
+            trade_type: 'sell',
+          };
+          const commonTradeData = {};
+
+          const [bdd, bmm, byy] = growwRow['Buy Date'].split('/');
+          const [sdd, smm, syy] = growwRow['Sell date'].split('/');
+
+          const buyDate = new Date(`${bmm}/${bdd}/${byy}`);
+          const sellDate = new Date(`${smm}/${sdd}/${syy}`);
+
+          commonTradeData.symbol = growwRow['Scrip Name'].split('.').join('');
+          buyTrade.trade_date = buyDate.toISOString();
+          sellTrade.trade_date = sellDate.toISOString();
+          buyTrade.order_execution_time = buyDate.toISOString();
+          sellTrade.order_execution_time = sellDate.toISOString();
+          buyTrade.quantity = growwRow['Buy Quantity'];
+          sellTrade.quantity = growwRow['Sell Quantity'];
+          buyTrade.price = growwRow['Buy Price'];
+          sellTrade.price = growwRow['Sell Price'];
+
+          buyTrade = {
+            ...buyTrade,
+            ...commonTradeData,
+          };
+          sellTrade = {
+            ...sellTrade,
+            ...commonTradeData,
+          };
+
+          allTrades.push(buyTrade);
+          allTrades.push(sellTrade);
+        });
+      }
+    }
   });
 
   await fs.writeFile(
@@ -49,6 +100,8 @@ async function getExitedTrades() {
       order_id,
       order_execution_time,
     }) => {
+      if (!order_execution_time) console.log(symbol);
+
       order_execution_time = order_execution_time.split('\n').join('');
       if (trade_type === 'buy') {
         if (holdings[symbol]) {
@@ -297,20 +350,55 @@ async function getXIRR() {
   });
   // Extract relevant data for XIRR calculation
   let cashFlows = [];
+  let cashflowsAfterStartingTrading = [];
+  const yearlyCashflowBreakdown = {};
+
   allExitedTrades.forEach(
     ({ buy, sell, buy_order_execution_time, sell_order_execution_time }) => {
-      cashFlows.push({
-        when: new Date(buy_order_execution_time),
+      const buyDate = new Date(buy_order_execution_time);
+      const sellDate = new Date(sell_order_execution_time);
+
+      const buyCashFlow = {
+        when: buyDate,
         amount: -1 * buy,
-      });
-      cashFlows.push({
-        when: new Date(sell_order_execution_time),
+      };
+      const sellCashFlow = {
+        when: sellDate,
         amount: sell,
-      });
+      };
+      cashFlows.push(buyCashFlow);
+      cashFlows.push(sellCashFlow);
+
+      if (tradingStartDateString) {
+        if (buyDate >= tradingStartDate) {
+          cashflowsAfterStartingTrading.push(buyCashFlow);
+          cashflowsAfterStartingTrading.push(sellCashFlow);
+        }
+      }
+
+      let fy = sellDate.getFullYear();
+
+      if (sellDate.getMonth() < 3) {
+        fy -= 1;
+      }
+
+      let fullFyString = `FY${fy}`;
+
+      if (!yearlyCashflowBreakdown[fullFyString]) {
+        yearlyCashflowBreakdown[fullFyString] = [];
+      }
+
+      yearlyCashflowBreakdown[fullFyString].push(buyCashFlow);
+      yearlyCashflowBreakdown[fullFyString].push(sellCashFlow);
     }
   );
 
   cashFlows.sort((a, b) => (a.when.getTime() <= b.when.getTime() ? -1 : 1));
+  if (tradingStartDateString) {
+    cashflowsAfterStartingTrading.sort((a, b) =>
+      a.when.getTime() <= b.when.getTime() ? -1 : 1
+    );
+  }
 
   // console.log(cashFlows);
 
@@ -326,15 +414,39 @@ async function getXIRR() {
       amount: -100,
     },
     {
-      when: new Date('2023-12-20T18:30:00.000Z'),
+      when: new Date('2024-12-15T18:30:00.000Z'),
       amount: 110,
     },
   ];
 
+  console.log('');
+  console.log('XIRR for exited trades');
+
   // Calculate XIRR
   const xirrValue = xirr(cashFlows);
+  console.log(`XIRR (All Time): ${(100 * xirrValue).toFixed(2)}%`);
 
-  console.log(`XIRR on exited trades: ${(100 * xirrValue).toFixed(2)}%`);
+  const yearlyXIRRBreakdown = {};
+  Object.keys(yearlyCashflowBreakdown).forEach((fy) => {
+    const fyCashflow = yearlyCashflowBreakdown[fy];
+
+    const fyXIRR = xirr(fyCashflow);
+
+    yearlyXIRRBreakdown[fy] = `${(100 * fyXIRR).toFixed(2)}%`;
+  });
+  console.log('');
+  console.log('Yearly XIRR breakdown');
+  console.table(yearlyXIRRBreakdown);
+
+  if (tradingStartDateString) {
+    const xirrAfterStartingTradingValue = xirr(cashflowsAfterStartingTrading);
+    console.log('');
+    console.log(
+      `XIRR (After Learning Trading): ${(
+        100 * xirrAfterStartingTradingValue
+      ).toFixed(2)}%`
+    );
+  }
 }
 
 async function main() {

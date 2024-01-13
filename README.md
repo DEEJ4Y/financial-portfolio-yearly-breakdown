@@ -2,7 +2,11 @@
 
 ## Setup
 
+### Add trade data
+
 Add your trade `.csv` files in the data folder in the root of the project.
+
+#### For Zerodha users
 
 CSV files should be in the following format
 
@@ -10,21 +14,31 @@ CSV files should be in the following format
 symbol,isin,trade_date,exchange,segment,series,trade_type,auction,quantity,price,trade_id,order_id,order_execution_time
 ```
 
-Add a JSON file called `totalInvestedAmountAtEndOfYears.json`. This should have key-value pairs of the year and invested amount at the end of that year. For example:
+#### For Groww users
 
-```json
-{
-  "2021": 10000,
-  "2022": 20000,
-  "2023": 40000
-}
+1. Download the P&L Report Excel sheet from Groww.
+2. Copy the trade table and paste it in another blank sheet.
+3. Export the new sheet as a CSV file.
+
+CSV files should be in the following format
+
+```csv
+Scrip Name,Buy Date,Buy Quantity,Buy Price,Buy Amount,Sell date,Sell Quantity,Sell Price,Sell Amount,Current Price,Current Amount,Realized P/L,Realised P/L (%),Unrealized P/L,Unrealised P/L (%)
 ```
+
+### Install packages
 
 Install the required packages. Run in the CLI
 
 ```sh
 npm install
 ```
+
+### Add Starting date for XIRR Calculation (Optional)
+
+If you want to see your XIRR from a particular date, update the first line in `index.js` with your start date. By default it is `1 Apr 2023`.
+
+If you want to disable this, comment out the first line by adding two forward slashes to the beginning. Uncomment the second line by removing the two forward slashes. Save the file and proceed.
 
 ## Run the project
 
@@ -43,3 +57,5 @@ lifetime-total-profit.txt
 yearly-profits-breakdown.json
 yearly-symbol-profits-breakdown.json
 ```
+
+Your XIRR Breakdown for realized P&L will be logged in the terminal.
