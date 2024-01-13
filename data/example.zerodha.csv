@@ -1,0 +1,2 @@
+symbol,isin,trade_date,exchange,segment,series,trade_type,auction,quantity,price,trade_id,order_id,order_execution_time
+HDFCBANK,INE040A01034,2020-08-14,NSE,EQ,EQ,buy,false,1.000000,1057.500000,27162479,1100000006155381,2020-08-14T11:49:19
