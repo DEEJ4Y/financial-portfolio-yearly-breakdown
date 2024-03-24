@@ -1,4 +1,4 @@
-const tradingStartDateString = '1 Apr, 2023'; // Replace with your trading start date in the same format. If no date as such, set as null or undefined like below
+const tradingStartDateString = '21 May, 2023'; // Replace with your trading start date in the same format. If no date as such, set as null or undefined like below
 //const tradingStartDateString = null;
 
 const fs = require('fs/promises');
@@ -35,41 +35,48 @@ async function parseCSVfiles() {
       // Groww
       else {
         jsonArray.forEach((growwRow) => {
-          let buyTrade = {
-            trade_type: 'buy',
-          };
-          let sellTrade = {
-            trade_type: 'sell',
-          };
-          const commonTradeData = {};
+          if (
+            growwRow['Stock name'] &&
+            growwRow['Buy date'] &&
+            growwRow['Sell date']
+          ) {
+            let buyTrade = {
+              trade_type: 'buy',
+            };
+            let sellTrade = {
+              trade_type: 'sell',
+            };
+            const commonTradeData = {};
 
-          const [bdd, bmm, byy] = growwRow['Buy Date'].split('/');
-          const [sdd, smm, syy] = growwRow['Sell date'].split('/');
+            const [bdd, bmm, byy] = growwRow['Buy date'].split('-');
+            const [sdd, smm, syy] = growwRow['Sell date'].split('-');
 
-          const buyDate = new Date(`${bmm}/${bdd}/${byy}`);
-          const sellDate = new Date(`${smm}/${sdd}/${syy}`);
+            const buyDate = new Date(`${bmm}/${bdd}/${byy}`);
+            const sellDate = new Date(`${smm}/${sdd}/${syy}`);
 
-          commonTradeData.symbol = growwRow['Scrip Name'].split('.').join('');
-          buyTrade.trade_date = buyDate.toISOString();
-          sellTrade.trade_date = sellDate.toISOString();
-          buyTrade.order_execution_time = buyDate.toISOString();
-          sellTrade.order_execution_time = sellDate.toISOString();
-          buyTrade.quantity = growwRow['Buy Quantity'];
-          sellTrade.quantity = growwRow['Sell Quantity'];
-          buyTrade.price = growwRow['Buy Price'];
-          sellTrade.price = growwRow['Sell Price'];
+            console.log({ buyDate, sellDate });
 
-          buyTrade = {
-            ...buyTrade,
-            ...commonTradeData,
-          };
-          sellTrade = {
-            ...sellTrade,
-            ...commonTradeData,
-          };
+            commonTradeData.symbol = growwRow['Stock name'];
+            commonTradeData.quantity = growwRow['Quantity'];
+            buyTrade.trade_date = buyDate.toISOString();
+            sellTrade.trade_date = sellDate.toISOString();
+            buyTrade.order_execution_time = buyDate.toISOString();
+            sellTrade.order_execution_time = sellDate.toISOString();
+            buyTrade.price = growwRow['Buy price'];
+            sellTrade.price = growwRow['Sell price'];
 
-          allTrades.push(buyTrade);
-          allTrades.push(sellTrade);
+            buyTrade = {
+              ...buyTrade,
+              ...commonTradeData,
+            };
+            sellTrade = {
+              ...sellTrade,
+              ...commonTradeData,
+            };
+
+            allTrades.push(buyTrade);
+            allTrades.push(sellTrade);
+          }
         });
       }
     }
@@ -150,13 +157,14 @@ async function getExitedTrades() {
 
           for (let i = 0; i < quantity; i++) {
             const shifted = thisSymbolTrades.shift();
-            oldBuyingPrices.push({
-              buy: shifted.price,
-              buy_order_execution_time: shifted.order_execution_time,
-              sell: price,
-              sell_order_execution_time: new Date(order_execution_time),
-              gain: price - shifted.price,
-            });
+            if (shifted && shifted.price)
+              oldBuyingPrices.push({
+                buy: shifted.price,
+                buy_order_execution_time: shifted.order_execution_time,
+                sell: price,
+                sell_order_execution_time: new Date(order_execution_time),
+                gain: price - shifted.price,
+              });
           }
 
           if (exitedTrades[symbol]) {
@@ -386,6 +394,8 @@ async function getXIRR() {
       yearlyCashflowBreakdown[fullFyString].push(sellCashFlow);
     }
   );
+
+  console.log('Yearly Cash flow: ', yearlyCashflowBreakdown);
 
   cashFlows.sort((a, b) => (a.when.getTime() <= b.when.getTime() ? -1 : 1));
   if (tradingStartDateString) {
