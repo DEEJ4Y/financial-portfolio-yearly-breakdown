@@ -53,8 +53,13 @@ async function parseCSVfiles() {
 
             const buyDate = new Date(`${bmm}/${bdd}/${byy}`);
             const sellDate = new Date(`${smm}/${sdd}/${syy}`);
+            timeDifference = Math.abs(buyDate.getTime() - sellDate.getTime());
+            timeindays=timeDifference/(3600*24*1000)
+            shortTermProfit=0
+            LongTermProfit=0
+           
 
-            console.log({ buyDate, sellDate });
+            console.log({ buyDate, sellDate, timeindays });
 
             commonTradeData.symbol = growwRow['Stock name'];
             commonTradeData.quantity = growwRow['Quantity'];
@@ -211,8 +216,16 @@ async function getSymbolProfitBreakdown() {
     );
     totalGains[symbol] = symbolGain;
     totalGain += symbolGain;
-  });
+    if (timeindays<365)
+  {
+    shortTermProfit+= symbolGain
+  }
+  else{
+    LongTermProfit+= symbolGain
+  }
 
+  }); 
+  
   await fs.writeFile(
     './data/lifetime-profits-breakdown.json',
     JSON.stringify(totalGains, null, 4),
@@ -441,6 +454,19 @@ async function getXIRR() {
   console.log('');
   console.log('Yearly XIRR breakdown');
   console.table(yearlyXIRRBreakdown);
+  //console.log(shortTermProfit)
+  //console.log(LongTermProfit)
+  console.log(
+    `Short term Gains is: ${(
+      shortTermProfit
+    )}`
+  );
+
+  console.log(
+    `Long term Gains is: ${(
+      LongTermProfit
+    )}`
+  );
 
   if (tradingStartDateString) {
     const xirrAfterStartingTradingValue = xirr(cashflowsAfterStartingTrading);
