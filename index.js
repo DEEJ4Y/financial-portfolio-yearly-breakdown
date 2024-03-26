@@ -450,7 +450,19 @@ async function getXIRR() {
         100 * xirrAfterStartingTradingValue
       ).toFixed(2)}%`
     );
+
+    fs.writeFile(
+      './data/xirr-after-starting-trading.json',
+      JSON.stringify(xirrAfterStartingTradingValue, null, 4),
+      'utf-8'
+    );
   }
+
+  fs.writeFile(
+    './data/xirr-yearly-breakdown.json',
+    JSON.stringify(yearlyXIRRBreakdown, null, 4),
+    'utf-8'
+  );
 }
 
 async function main() {

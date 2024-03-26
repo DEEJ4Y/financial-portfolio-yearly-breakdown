@@ -2,6 +2,10 @@
 
 ## Setup
 
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) >v16 with NPM
+
 ### Add trade data
 
 Add your trade `.csv` files in the data folder in the root of the project.
@@ -23,12 +27,12 @@ symbol,isin,trade_date,exchange,segment,series,trade_type,auction,quantity,price
 CSV files should be in the following format
 
 ```csv
-Scrip Name,Buy Date,Buy Quantity,Buy Price,Buy Amount,Sell date,Sell Quantity,Sell Price,Sell Amount,Current Price,Current Amount,Realized P/L,Realised P/L (%),Unrealized P/L,Unrealised P/L (%)
+Stock name,ISIN,Quantity,Buy date,Buy price,Buy value,Sell date,Sell price,Sell value,Realised P&L,Remark
 ```
 
 ### Install packages
 
-Install the required packages. Run in the CLI
+Install the required packages. Run the following CLI command in the root folder of the project.
 
 ```sh
 npm install
